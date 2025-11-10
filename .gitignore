@@ -39,3 +39,4 @@ backend/.cache/
 *.mp4
 *.avi
 *.psd
+.vercel

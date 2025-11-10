@@ -76,13 +76,11 @@ const SEED_CERTS = [
 
 interface Experience { company: string; role: string; period: string; points: string[] }
 const SEED_EXPERIENCE: Experience[] = [
-  { company: "TechnoHacks", role: "Python Development Intern", period: "May 2025 — Jun 2025", points: ["Built Streamlit tools", "Automated reporting", "Collaborated via PRs"] },
-  { company: "Oasis Infobyte", role: "Java Development Intern", period: "Aug 2025 — Sep 2025", points: ["Spring Boot + JPA", "React/Node integration", "Unit tests & CI"] },
+  { company: "TechnoHacks", role: "Python Development Intern", period: "May 2025 — Jun 2025", points: ["Designed and developed Python scripts for data processing, automation and optimization."] },
+  { company: "Oasis Infobyte", role: "Java Development Intern", period: "Aug 2025 — Sep 2025", points: ["Developed and tested Java applications", "focusing on improving user experirnce and functionality", "Contributed to projects by debugging code, optimizing performance,and ensuring efficient data management"] },
 ];
 
-// ----------------------------------
-// Inline UI helpers
-// ----------------------------------
+
 interface SectionTitleProps { icon?: React.ReactNode; kicker?: string; title: string; sub?: string; rightSlot?: React.ReactNode }
 const SectionTitle: React.FC<SectionTitleProps> = ({ icon, kicker, title, sub, rightSlot }) => (
   <div className="mb-6 flex flex-col gap-2">
@@ -395,32 +393,48 @@ const AboutPage: React.FC = () => (
 const ExperiencePage: React.FC = () => {
   const [list, setList] = useState<Experience[]>([...SEED_EXPERIENCE]);
   const [form, setForm] = useState({ company: "", role: "", period: "", points: "" });
+  useEffect(() => {
+  (async () => {
+    try {
+      const res = await fetch(`/api/experience`);
+      if (res.ok) {
+        const data = await res.json();
+        setList(data);
+      } else {
+        console.error("Failed to load experience from DB");
+      }
+    } catch (err) {
+      console.error("Error fetching experience:", err);
+    }
+  })();
+}, []);
+
   const addItem = async () => {
   if (!form.company || !form.role) return;
   const item = {
     company: form.company,
     role: form.role,
     period: form.period || "—",
-    points: form.points ? form.points.split(";").map(s => s.trim()) : [],
+    points: form.points ? form.points.split(";").map(s => s.trim()).filter(Boolean) : [],
   };
 
   try {
-    const res = await fetch("http://localhost:5050/api/experience", {
+    const res = await fetch(`/api/experience`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(item),
     });
-
     if (!res.ok) throw new Error("Failed to save experience");
-
     const saved = await res.json();
     setList([saved, ...list]);
     setForm({ company: "", role: "", period: "", points: "" });
   } catch (err) {
-    console.error(err);
-    alert("Error saving experience.");
+    console.error("Error adding experience:", err);
+    alert("Failed to add experience. Check console for details.");
   }
 };
+
+
 
   return (
     <PageShell bgClass="bg-[radial-gradient(1200px_600px_at_110%_10%,#0b1020_20%,transparent_60%),linear-gradient(135deg,#0a0a1a_0%,#1a1033_45%,#2a0a3a_100%)]">
@@ -470,6 +484,22 @@ const ProjectsPage: React.FC = () => {
   type CustomProject = { name: string; url: string; description?: string; skills?: string };
   const [custom, setCustom] = useState<CustomProject[]>([]);
   const [form, setForm] = useState<CustomProject>({ name: "", url: "", description: "", skills: "" });
+  useEffect(() => {
+  (async () => {
+    try {
+      const res = await fetch(`/api/projects`);
+      if (res.ok) {
+        const data = await res.json();
+        setCustom(data);
+      } else {
+        console.error("Failed to load projects from DB");
+      }
+    } catch (err) {
+      console.error("Error fetching projects:", err);
+    }
+  })();
+}, []);
+
   const groups = useMemo(() => {
     const byLang = new Map<string, Repo[]>();
     ghRepos.forEach(r => {
@@ -482,22 +512,21 @@ const ProjectsPage: React.FC = () => {
   const addCustom = async () => {
   if (!form.name || !form.url) return;
   try {
-    const res = await fetch("http://localhost:5050/api/projects", {
+    const res = await fetch(`/api/projects`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(form),
     });
-
     if (!res.ok) throw new Error("Failed to save project");
-
     const saved = await res.json();
     setCustom([saved, ...custom]);
     setForm({ name: "", url: "", description: "", skills: "" });
   } catch (err) {
-    console.error(err);
-    alert("Error saving project.");
+    console.error("Error adding project:", err);
+    alert("Failed to add project. Check console for details.");
   }
 };
+
 
   return (
     <PageShell bgClass="bg-[radial-gradient(1200px_600px_at_50%_-20%,#1f2937_20%,transparent_60%),linear-gradient(135deg,#0b1020_0%,#102018_45%,#0a3a24_100%)]">
@@ -575,30 +604,41 @@ const SEED_SKILLS: SkillItem[] = [
 const SkillsPage: React.FC = () => {
   const [skills, setSkills] = useState<SkillItem[]>(SEED_SKILLS);
   const [form, setForm] = useState<SkillItem>({ subject: "", level: 50, logo: "" });
+   useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch(`/api/skills`);
+        if (res.ok) {
+          const data = await res.json();
+          setSkills(data);
+        }
+      } catch (err) {
+        console.error("Error fetching skills:", err);
+      }
+    })();
+  }, []);
+
   const addSkill = async () => {
   const s = form.subject.trim();
   if (!s) return;
-  if (skills.some(k => k.subject.toLowerCase() === s.toLowerCase())) return;
-
   const lvl = Math.max(0, Math.min(100, Number(form.level)));
 
   try {
-    const res = await fetch("http://localhost:5050/api/skills", {
+    const res = await fetch(`/api/skills`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ subject: s, level: lvl, logo: form.logo }),
     });
-
     if (!res.ok) throw new Error("Failed to save skill");
-
     const saved = await res.json();
     setSkills([saved, ...skills]);
     setForm({ subject: "", level: 50, logo: "" });
   } catch (err) {
-    console.error(err);
-    alert("Error saving skill to database.");
+    console.error("Error adding skill:", err);
+    alert("Failed to add skill. Check console for details.");
   }
 };
+
 
   return (
     <PageShell bgClass="bg-[radial-gradient(1400px_700px_at_-10%_-20%,#1f2937_20%,transparent_60%),linear-gradient(135deg,#0b1020_0%,#0f172a_45%,#1b2a4b_100%)]">
